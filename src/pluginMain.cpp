@@ -19,7 +19,7 @@ MStatus initializePlugin(MObject obj)
 	if (!status) 
 	{
 
-		status.perror("registerNode");
+		status.perror("registerCommand");
 		return status;
 
 	}
@@ -40,7 +40,7 @@ MStatus uninitializePlugin(MObject obj)
 	if (!status) 
 	{
 
-		status.perror("deregisterNode");
+		status.perror("deregisterCommand");
 		return status;
 
 	}
