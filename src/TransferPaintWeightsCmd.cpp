@@ -160,7 +160,7 @@ The actual action performed by the command should be done in the redoIt method. 
 
 	}
 
-	// Incorporate min/ax colors into gradient
+	// Incorporate min/max colors into gradient
 	//
 	this->gradient[0] = this->rampMinColor;
 	this->gradient[100] = this->rampMaxColor;
