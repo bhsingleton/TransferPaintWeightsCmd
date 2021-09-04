@@ -11,7 +11,7 @@
 
 TransferPaintWeightsCmd::TransferPaintWeightsCmd() {}
 TransferPaintWeightsCmd::~TransferPaintWeightsCmd() {}
-6
+
 
 MStatus TransferPaintWeightsCmd::doIt(const MArgList &args)
 /**
@@ -681,9 +681,9 @@ Each color chunk consists of the following: Red, Green, Blue, Alpha, Position.
 			//
 			percent = static_cast<float>(j) / 100.0f;
 
-			gradient[j].r = slots[i].color.r + (slots[i + 1].color.r - slots[i].color.r) * percent;
-			gradient[j].g = slots[i].color.g + (slots[i + 1].color.g - slots[i].color.g) * percent;
-			gradient[j].b = slots[i].color.b + (slots[i + 1].color.b - slots[i].color.b) * percent;
+			gradient[j].r = slots[i].color.r + (slots[i+1].color.r - slots[i].color.r) * percent;
+			gradient[j].g = slots[i].color.g + (slots[i+1].color.g - slots[i].color.g) * percent;
+			gradient[j].b = slots[i].color.b + (slots[i+1].color.b - slots[i].color.b) * percent;
 			gradient[j].a = 1.0f;
 
 		}
