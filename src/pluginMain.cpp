@@ -26,7 +26,8 @@ MStatus initializePlugin(MObject obj)
 
 	return status;
 
-}
+};
+
 
 MStatus uninitializePlugin(MObject obj) 
 {
@@ -46,4 +47,4 @@ MStatus uninitializePlugin(MObject obj)
 
 	return status;
 
-}
+};

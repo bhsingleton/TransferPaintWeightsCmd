@@ -11,6 +11,7 @@
 
 TransferPaintWeightsCmd::TransferPaintWeightsCmd() {}
 TransferPaintWeightsCmd::~TransferPaintWeightsCmd() {}
+6
 
 MStatus TransferPaintWeightsCmd::doIt(const MArgList &args)
 /**
@@ -168,7 +169,8 @@ The actual action performed by the command should be done in the redoIt method. 
 	//
 	return TransferPaintWeightsCmd::redoIt();
 
-}
+};
+
 
 MStatus TransferPaintWeightsCmd::redoIt() 
 /**
@@ -223,7 +225,8 @@ Internal class data should be set in the doIt method.
 
 	return MS::kSuccess;
 
-}
+};
+
 
 bool TransferPaintWeightsCmd::isUndoable() const 
 /**
@@ -236,7 +239,8 @@ This command was original developed for Vertex Blender so we want the tool to ha
 
 	return false;
 
-}
+};
+
 
 bool TransferPaintWeightsCmd::hasColorSet(const MDagPath &dagPath, const MString colorSetName) 
 {
@@ -273,7 +277,8 @@ bool TransferPaintWeightsCmd::hasColorSet(const MDagPath &dagPath, const MString
 
 	return false;
 
-}
+};
+
 
 MIntArray TransferPaintWeightsCmd::createColorIds(const MDagPath &mesh, const MDoubleArray &weights, const MColorArray &colors) 
 /**
@@ -346,7 +351,8 @@ Returns a list of face-vertex colour IDs based on the supplied weights and color
 	
 	return colorIds;
 
-}
+};
+
 
 MStatus TransferPaintWeightsCmd::getWeights(const MObject &skinCluster, unsigned int influenceId, const MIntArray &vertices, MDoubleArray &weights)
 /**
@@ -439,7 +445,8 @@ Collects all of the weight values for the given influence ID.
 
 	return MS::kSuccess;
 
-}
+};
+
 
 MStatus TransferPaintWeightsCmd::applyPaintWeights(const MDagPath &mesh, const MDoubleArray &weights, const MColorArray &gradient, MString colorSetName)
 /**
@@ -514,7 +521,8 @@ If the specified set cannot be found then a new one is created in its place.
 
 	return MS::kSuccess;
 
-}
+};
+
 
 int TransferPaintWeightsCmd::clampValue(int value, int min, int max) 
 /**
@@ -544,7 +552,8 @@ Clamps the specified value between the minimum and maximum values.
 
 	return value;
 
-}
+};
+
 
 MIntArray TransferPaintWeightsCmd::range(unsigned int start, unsigned int end, unsigned int step)
 /**
@@ -569,7 +578,8 @@ Returns a range of integers based on the specified variables.
 
 	return range;
 
-}
+};
+
 
 MStatus TransferPaintWeightsCmd::createGradient(const MString colorRamp, MColorArray &gradient)
 /**
@@ -682,7 +692,8 @@ Each color chunk consists of the following: Red, Green, Blue, Alpha, Position.
 
 	return MS::kSuccess;
 
-}
+};
+
 
 MSyntax TransferPaintWeightsCmd::newSyntax()
 /**
@@ -732,7 +743,8 @@ Returns a syntax object that can parse this command.
 
 	return syntax;
 
-}
+};
+
 
 bool TransferPaintWeightsCmd::hasSyntax()
 /**
@@ -744,7 +756,8 @@ Evaluates if this command uses syntax.
 
 	return true;
 
-}
+};
+
 
 void* TransferPaintWeightsCmd::creator() 
 /**
@@ -756,4 +769,4 @@ Returns a new instance of this command.
 
 	return new TransferPaintWeightsCmd();
 
-}
+};
