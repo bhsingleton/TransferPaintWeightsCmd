@@ -25,11 +25,6 @@ The actual action performed by the command should be done in the redoIt method. 
 
 	MStatus status;
 
-	// Reset read buffer
-	//
-	std::cout.set_rdbuf(MStreamUtils::stdOutStream().rdbuf());
-	std::cerr.set_rdbuf(MStreamUtils::stdErrorStream().rdbuf());
-
 	// Initialize argument parser
 	//
 	MSyntax syntax = TransferPaintWeightsCmd::syntax();
@@ -53,8 +48,6 @@ The actual action performed by the command should be done in the redoIt method. 
 		this->colorSetName = argData.flagArgumentString("csn", 0, &status);
 		CHECK_MSTATUS_AND_RETURN_IT(status);
 
-		//std::cout << "TransferPaintWeightsCmd::doIt(): Using \"" << this->colorSetName.asChar() << "\" as default color set." << std::endl;
-
 	}
 	else 
 	{
@@ -73,8 +66,6 @@ The actual action performed by the command should be done in the redoIt method. 
 
 		this->colorRamp = argData.flagArgumentString("cr", 0, &status);
 		CHECK_MSTATUS_AND_RETURN_IT(status);
-
-		//std::cout << "TransferPaintWeightsCmd::doIt(): Using \"" << this->colorRamp.asChar() << "\" as default color ramp." << std::endl;
 
 	}
 	else 
@@ -183,21 +174,36 @@ Internal class data should be set in the doIt method.
 
 	MStatus status;
 
-	// Get ".paintWeights" plug from selection list
+	// Get skin cluster object
 	//
-	MPlug plug;
-	status = this->selection.getPlug(0, plug);
-	
-	if (!status) {
+	MObject skinCluster;
+	status = this->selection.getDependNode(0, skinCluster);
 
-		status.perror("First argument is not a valid plug!");
+	if (!skinCluster.hasFn(MFn::kSkinClusterFilter) || !status)
+	{
+
+		status.perror("First argument is not a valid skin cluster!");
 		return status;
 
 	}
 
-	// Get double array from plug
+	// Mark `paintTrans` plug as dirty to force `paintWeights` plug to update
 	//
-	MObject data = plug.asMObject(MDGContext::fsNormal, &status);
+	MFnDependencyNode fnDependNode(skinCluster, &status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	MPlug paintTransPlug = fnDependNode.findPlug("paintTrans", &status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	status = TransferPaintWeightsCmd::markPlugDirty(paintTransPlug);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	// Get double array from `paintWeights` plug
+	//
+	MPlug paintWeightsPlug = fnDependNode.findPlug("paintWeights", &status);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	MObject data = paintWeightsPlug.asMObject(&status);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	MFnDoubleArrayData fnDoubleArrayData(data, &status);
@@ -211,9 +217,10 @@ Internal class data should be set in the doIt method.
 	MDagPath intermediate;
 	status = this->selection.getDagPath(1, intermediate);
 
-	if (!status) {
+	if (!intermediate.hasFn(MFn::kMesh) || !status)
+	{
 
-		status.perror("Second argument is not a valid dag node!");
+		status.perror("Second argument is not a valid mesh!");
 		return status;
 
 	}
@@ -238,6 +245,26 @@ This command was original developed for Vertex Blender so we want the tool to ha
 {
 
 	return false;
+
+};
+
+
+MStatus TransferPaintWeightsCmd::markPlugDirty(const MPlug& plug)
+/**
+Marks the supplied plug as dirty forcing the internal value to be updated.
+
+@param plug: The plug to mark dirty.
+@return: Status code.
+*/
+{
+
+	MString command = MString("dgdirty ");
+	command += "\"";
+	command += plug.info();
+	command += "\"";
+	command += ";";
+
+	return MGlobal::executeCommand(command);
 
 };
 
@@ -337,7 +364,7 @@ Returns a list of face-vertex colour IDs based on the supplied weights and color
 			// Scale and clamp value to index range
 			//
 			value = ceil(weights[vertices[i]] * max);
-			colorIndex = TransferPaintWeightsCmd::clampValue(static_cast<int>(value), min, max);
+			colorIndex = TransferPaintWeightsCmd::clamp(static_cast<int>(value), min, max);
 
 			colorIds[insertAt] = colorIndex;
 
@@ -354,100 +381,6 @@ Returns a list of face-vertex colour IDs based on the supplied weights and color
 };
 
 
-MStatus TransferPaintWeightsCmd::getWeights(const MObject &skinCluster, unsigned int influenceId, const MIntArray &vertices, MDoubleArray &weights)
-/**
-Collects all of the weight values for the given influence ID.
-
-@param skinCluster: The skin cluster to sample from.
-@param influenceId: The influence ID to sample from.
-@param vertices: The vertex indices to sample from.
-@param weights: The passed array to populate.
-@return: Status code..
-*/
-{
-
-	MStatus status;
-
-	// Initialize function set
-	//
-	MFnDependencyNode fnDepNode(skinCluster, &status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-
-	// Get ".weightList" plug
-	//
-	MPlug plug = fnDepNode.findPlug("weightList", &status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-
-	MObject attribute = fnDepNode.attribute("weights", &status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-
-	// Resize array to accomodate vertex quantity
-	//
-	unsigned int numVertices = vertices.length();
-
-	status = weights.setLength(numVertices);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-
-	// Iterate through all vertices
-	//
-	MPlug child, element;
-
-	unsigned int numChildElements;
-	unsigned int elementIndex;
-
-	for (unsigned int i = 0; i < numVertices; i++) 
-	{
-
-		// Jump to next index
-		//
-		status = plug.selectAncestorLogicalIndex(vertices[i]);
-		CHECK_MSTATUS_AND_RETURN_IT(status);
-
-		// Set default value
-		//
-		weights[i] = 0.0;
-
-		// Get ".weight" child plug
-		//
-		child = plug.child(attribute, &status);
-		CHECK_MSTATUS_AND_RETURN_IT(status);
-
-		// Iterate through child elements
-		// These are sparse indices so get existing indices!
-		//
-		numChildElements = child.numElements(&status);
-		CHECK_MSTATUS_AND_RETURN_IT(status);
-
-		for (unsigned int j = 0; j < numChildElements; j++) 
-		{
-
-			// Check if influence id matches
-			//
-			element = child.elementByPhysicalIndex(j, &status);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-
-			elementIndex = element.logicalIndex(&status);
-			CHECK_MSTATUS_AND_RETURN_IT(status);
-
-			if (elementIndex == influenceId) 
-			{
-
-				// Get weight and break loop
-				//
-				weights[i] = element.asDouble();
-				break;
-
-			}
-
-		}
-
-	}
-
-	return MS::kSuccess;
-
-};
-
-
 MStatus TransferPaintWeightsCmd::applyPaintWeights(const MDagPath &mesh, const MDoubleArray &weights, const MColorArray &gradient, MString colorSetName)
 /**
 Modifies the vertex colour indices to reflect the supplied weights.
@@ -457,25 +390,11 @@ If the specified set cannot be found then a new one is created in its place.
 @param weights: The skin weights to derive the colour indices from.
 @param gradient: The range of colours we can utilize.
 @param colorSetName: The colour set to modify.
-@return: Status code..
+@return: Status code.
 */
 {
 
 	MStatus status;
-
-	// Initialize function set
-	//
-	MFnDagNode fnDagNode(mesh, &status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-
-	// Block the node from updating
-	// This is really important in order to propogate changes!
-	//
-	MPlug nodeStatePlug = fnDagNode.findPlug("nodeState", &status);
-	CHECK_MSTATUS_AND_RETURN_IT(status);
-
-	status = nodeStatePlug.setInt(2); // Blocking
-	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	// Initialize function set
 	//
@@ -502,21 +421,19 @@ If the specified set cannot be found then a new one is created in its place.
 	status = fnMesh.clearColors(&colorSetName);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
-	// Set color ids using gradient
+	// Set color IDs using gradient
 	//
 	status = fnMesh.setColors(gradient, &colorSetName);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
-	// Assign colors ids based on weights
+	// Assign colors IDs based on skin weights
 	//
 	MIntArray colorIds = TransferPaintWeightsCmd::createColorIds(mesh, weights, gradient);
 
 	status = fnMesh.assignColors(colorIds, &colorSetName);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
-	// Reset node state
-	//
-	status = nodeStatePlug.setInt(0); // Normal
+	status = fnMesh.updateSurface();
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	return MS::kSuccess;
@@ -524,7 +441,7 @@ If the specified set cannot be found then a new one is created in its place.
 };
 
 
-int TransferPaintWeightsCmd::clampValue(int value, int min, int max) 
+int TransferPaintWeightsCmd::clamp(int value, int min, int max)
 /**
 Clamps the specified value between the minimum and maximum values.
 
@@ -611,7 +528,7 @@ Each color chunk consists of the following: Red, Green, Blue, Alpha, Position.
 
 		vec.push_back(i);
 
-		if (ss.peek() == DELIMITER) 
+		if (ss.peek() == RAMP_DELIMITER)
 		{
 			
 			ss.ignore();
@@ -650,7 +567,7 @@ Each color chunk consists of the following: Red, Green, Blue, Alpha, Position.
 	for (unsigned int i = 0; i < size; i += CHUNK_SIZE) 
 	{
 
-		slots[insertAt] = ColorSlot(vec[i], vec[i+1], vec[i+2], vec[i+3]);
+		slots[insertAt] = ColorSlot(vec[i], vec[i + 1], vec[i + 2], vec[i + 3]);
 		insertAt += 1;
 
 	}
@@ -672,7 +589,7 @@ Each color chunk consists of the following: Red, Green, Blue, Alpha, Position.
 		// Get lerp range
 		//
 		start = static_cast<int>(slots[i].position * 100.0);
-		end = static_cast<int>(slots[i+1].position * 100.0);
+		end = static_cast<int>(slots[i + 1].position * 100.0);
 
 		for (int j = start; j <= end; j++) 
 		{
@@ -681,9 +598,9 @@ Each color chunk consists of the following: Red, Green, Blue, Alpha, Position.
 			//
 			percent = static_cast<float>(j) / 100.0f;
 
-			gradient[j].r = slots[i].color.r + (slots[i+1].color.r - slots[i].color.r) * percent;
-			gradient[j].g = slots[i].color.g + (slots[i+1].color.g - slots[i].color.g) * percent;
-			gradient[j].b = slots[i].color.b + (slots[i+1].color.b - slots[i].color.b) * percent;
+			gradient[j].r = slots[i].color.r + (slots[i + 1].color.r - slots[i].color.r) * percent;
+			gradient[j].g = slots[i].color.g + (slots[i + 1].color.g - slots[i].color.g) * percent;
+			gradient[j].b = slots[i].color.b + (slots[i + 1].color.b - slots[i].color.b) * percent;
 			gradient[j].a = 1.0f;
 
 		}

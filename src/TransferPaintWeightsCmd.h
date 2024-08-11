@@ -43,7 +43,7 @@
 #define COLOR_SET_NAME "paintWeightsColorSet1"
 #define COLOR_RAMP "0.5,0.5,0.5,0.5,1,1,1,1,1,1,0,0,0,0,1"
 #define CHUNK_SIZE 5
-#define DELIMITER ','
+#define RAMP_DELIMITER ','
 #define MIN_COLOR MColor(0.0f, 0.0f, 0.0f)
 #define MAX_COLOR MColor(1.0f, 1.0f, 1.0f)
 
@@ -58,19 +58,16 @@ public:
 
 	virtual MStatus		doIt(const MArgList &args);
 	virtual	MStatus		redoIt();
-
 	virtual	bool		isUndoable() const;
 	
-	static	MIntArray	createColorIds(const MDagPath &mesh, const MDoubleArray &weights, const MColorArray &colors);
-
-	static	MStatus		getWeights(const MObject &skinCluster, unsigned int influenceId, const MIntArray &vertices, MDoubleArray &weights);
-	static	MStatus		applyPaintWeights(const MDagPath &mesh, const MDoubleArray &weights, const MColorArray &gradient, MString colorSetName);
-
-	static	int			clampValue(int value, int min, int max);
+	static	int			clamp(int value, int min, int max);
 	static	MIntArray	range(unsigned int start, unsigned int end, unsigned int step);
 
+	static	MStatus		markPlugDirty(const MPlug& plug);
 	static	bool		hasColorSet(const MDagPath &dagPath, const MString colorSetName);
+	static	MIntArray	createColorIds(const MDagPath &mesh, const MDoubleArray &weights, const MColorArray &colors);
 	static	MStatus		createGradient(const MString colorRamp, MColorArray &gradient);
+	static	MStatus		applyPaintWeights(const MDagPath &mesh, const MDoubleArray &weights, const MColorArray &gradient, MString colorSetName);
 
 	static  void*		creator();
 
